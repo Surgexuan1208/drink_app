@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,14 +15,13 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-
 namespace WpfApp1
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
-    {            
+    {
         Dictionary<String, int> drinks = new Dictionary<String, int>();
         Dictionary<String, int> orders = new Dictionary<String, int>();
         string takeout = "";
@@ -33,27 +35,29 @@ namespace WpfApp1
         {
             foreach (var drink in MyDrinks)
             {
-                StackPanel sp=new StackPanel();
-                sp.Orientation=Orientation.Horizontal;
+                StackPanel sp = new StackPanel();
+                sp.Orientation = Orientation.Horizontal;
 
-                CheckBox cb=new CheckBox();
+                CheckBox cb = new CheckBox();
                 cb.Foreground = Brushes.Blue;
                 cb.Content = $"{drink.Key}:{drink.Value}元";
                 cb.FontFamily = new FontFamily("Consolas");
                 cb.FontSize = 18;
-                cb.Margin=new Thickness(5);
-                cb.Width = 200;
+                cb.Margin = new Thickness(5);
+                cb.Width = 300;
                 sp.Children.Add(cb);
 
-                Slider sd=new Slider();
-                sd.Width = 500;
-                sd.Value = 0;
-                sd.Minimum = 0;
-                sd.Maximum = 50;
-                sd.IsSnapToTickEnabled = true;
+                Slider sd = new Slider
+                {
+                    Width = 450,
+                    Value = 0,
+                    Minimum = 0,
+                    Maximum = 50,
+                    IsSnapToTickEnabled = true,
+                };
                 sp.Children.Add(sd);
 
-                Label lb=new Label();
+                Label lb = new Label();
                 lb.Width = 50;
                 lb.Content = "0";
                 lb.FontFamily = new FontFamily("Consolas");
@@ -61,7 +65,7 @@ namespace WpfApp1
                 lb.Foreground = Brushes.Red;
                 sp.Children.Add(lb);
 
-                Binding bd=new Binding("Value");
+                Binding bd = new Binding("Value");
                 bd.Source = sd;
                 lb.SetBinding(ContentProperty, bd);
 
@@ -70,36 +74,123 @@ namespace WpfApp1
         }
         private void AddNewDrink(Dictionary<string, int> MyDrinks)
         {
-            MyDrinks.Add("紅茶大杯",60);
-            MyDrinks.Add("紅茶小杯",40);
-            MyDrinks.Add("綠茶大杯",60);
-            MyDrinks.Add("綠茶小杯",40);
-            MyDrinks.Add("咖啡大杯",80);
-            MyDrinks.Add("咖啡小杯",50);
-            MyDrinks.Add("可樂大杯",40);
-            MyDrinks.Add("可樂小杯",20);
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "CSV檔|*.csv|文字檔案|*.txt|所有檔案 (*.*)|*.*";
+            if (openFileDialog.ShowDialog() == true)
+            {
+                string filename = openFileDialog.FileName;
+                string[] lines = File.ReadAllLines(filename);
+                foreach (var line in lines)
+                {
+                    string[] tokens = line.Split(',');
+                    string drinkName = tokens[0];
+                    int price = int.Parse(tokens[1]);
+                    MyDrinks.Add(drinkName, price);
+                }
+            }
         }
-
         private void RadioButton_Checked(object sender, RoutedEventArgs e)
         {
             var rb = sender as RadioButton;
             if (rb.IsChecked == true) takeout = rb.Content.ToString();
         }
-
         private void OrderButton_Click(object sender, RoutedEventArgs e)
         {
             PlaceOrder(orders);
+            DisplayOrder_textblock_ver();
+            if (takeout == "外帶")
+            {
+                var result = MessageBox.Show("是否輸出明細表?", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result == MessageBoxResult.Yes)
+                {
+                    Stream myStream;
+                    SaveFileDialog saveFileDialog = new SaveFileDialog();
+                    saveFileDialog.Filter = "文字檔案|*.txt|All files (*.*)|*.*";
+                    if (saveFileDialog.ShowDialog() == true)
+                    {
+                        FileStream filestream = new FileStream(saveFileDialog.FileName, FileMode.OpenOrCreate, FileAccess.Write);
+                        StreamWriter sw = new StreamWriter(filestream);
+                        sw.Write(textarea.Text);
+                        sw.Close();
+                    }
+                }
+            }
+        }
+        private void DisplayOrder_textblock_ver()
+        {
+            textarea.Inlines.Clear();
+            Run titleString = new Run
+            {
+                Text = "您所訂購的飲品為",
+                FontSize = 16,
+                Foreground = Brushes.Brown
+            };
+            Run takeoutString = new Run
+            {
+                Text = $"{takeout}",
+                FontSize = 16,
+                FontWeight = FontWeights.Bold
+            };
+            textarea.Inlines.Add(titleString);
+            textarea.Inlines.Add(takeoutString);
+            textarea.Inlines.Add(new Run { Text = $"，本次訂購清單如下：\n", FontSize = 16 });
+            double total = 0.0;
+            double sellPrice = 0.0;
+            string message;
+            int i = 0;
+            foreach (KeyValuePair<string, int> item in orders)
+            {
+                i++;
+                string drinkname = item.Key;
+                int amount = orders[drinkname];
+                int price = drinks[drinkname];
+                total += price * amount;
+                textarea.Inlines.Add(new Run { Text = $"飲料品項{i}：{drinkname}*{amount}杯，每杯{price}元，總共{price * amount}元\n", FontSize = 16 });
+            }
+            if (total >= 500)
+            {
+                message = "訂購滿500元以上者8折";
+                sellPrice = total * 0.8;
+            }
+            else if (total >= 300)
+            {
+                message = "訂購滿300元以上者85折";
+                sellPrice = total * 0.85;
+            }
+            else if (total >= 200)
+            {
+                message = "訂購滿200元以上者9折";
+                sellPrice = total * 0.9;
+            }
+            else
+            {
+                message = "訂購未滿200元不打折";
+                sellPrice = total;
+            }
+            Italic summary = new Italic(new Run
+            {
+                Text = $"您總共訂購{orders.Count}項飲料，總計{total}元。{message}，總計需付款{(int)sellPrice}元。",
+                FontSize = 16,
+                FontWeight = FontWeights.Bold,
+                Background = Brushes.Azure,
+                Foreground = Brushes.Red,
+            });
+            textarea.Inlines.Add(summary);
+        }
+
+        /*private void DisplayOrder_textbox_ver()
+        {
             double total = 0.0;
             string message = "";
             double sellPrice = 0.0;
             string displaystring = $"本次訂購為{takeout}，清單如下：\n";
-            foreach(KeyValuePair<string, int> item in orders)
+            foreach (KeyValuePair<string, int> item in orders)
             {
-                string drinkname=item.Key;
+                string drinkname = item.Key;
                 int amount = orders[drinkname];
                 int price = drinks[drinkname];
                 total += price * amount;
-                displaystring += $"{drinkname}*{amount}杯，每杯{price}元，總共{price*amount}元\n";
+                displaystring += $"{drinkname}*{amount}杯，每杯{price}元，總共{price * amount}元\n";
             }
             if (total >= 500)
             {
@@ -123,18 +214,28 @@ namespace WpfApp1
             }
             displaystring += $"您總共訂購{orders.Count}項飲料，總計{total}元。{message}，總計需付款{(int)sellPrice}元。";
             textarea.Text = displaystring;
-        }
+        }*/
         private void PlaceOrder(Dictionary<string, int> myOrders)
         {
             myOrders.Clear();
-            for(int i = 0; i < stackpanel_dispaly.Children.Count; i++)
+            for (int i = 0; i < stackpanel_dispaly.Children.Count; i++)
             {
                 StackPanel sp = stackpanel_dispaly.Children[i] as StackPanel;
-                CheckBox cb= sp.Children[0] as CheckBox;
-                Slider sd= sp.Children[1] as Slider;
-                string drinkname=cb.Content.ToString().Substring(0,4);
+                CheckBox cb = sp.Children[0] as CheckBox;
+                Slider sd = sp.Children[1] as Slider;
+                string buff = cb.Content.ToString();
+                int cblen = 0;
+                for (int j = 0; j < buff.Length; j++)
+                {
+                    if (buff[j] == ':')
+                    {
+                        cblen = j;
+                        break;
+                    }
+                }
+                string drinkname = cb.Content.ToString().Substring(0, cblen);
                 int quantity = (int)sd.Value;
-                if(quantity != 0 && cb.IsChecked==true)
+                if (quantity != 0 && cb.IsChecked == true)
                 {
                     myOrders.Add(drinkname, quantity);
                 }

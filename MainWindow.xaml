@@ -14,8 +14,16 @@
             </StackPanel>
         </GroupBox>
         <Button x:Name="OrderButton" Content="確認訂購" Margin="745,53,31,0" VerticalAlignment="Top" Height="60" FontSize="20" Click="OrderButton_Click" Background="#FF97E8ED"/>
-        <StackPanel x:Name="stackpanel_dispaly" Background="#FFFBECD1" Margin="31,125,31,0" VerticalAlignment="Top"/>
-        <TextBox x:Name="textarea" Margin="31,399,31,31" TextWrapping="Wrap" Text="" Background="#FFFBC6C6" FontSize="18" VerticalScrollBarVisibility="Auto"/>
-
+        <Border Margin="31,143,31,234">
+            <ScrollViewer VerticalScrollBarVisibility="Visible">
+                <StackPanel x:Name="stackpanel_dispaly" Background="#FFFBECD1" VerticalAlignment="Top"/>
+            </ScrollViewer>
+        </Border>
+        <!--<TextBox x:Name="textarea" Margin="31,399,31,31" TextWrapping="Wrap" Text="" Background="#FFFBC6C6" FontSize="18" VerticalScrollBarVisibility="Visible"/>-->
+        <Border Margin="31,399,31,31">
+            <ScrollViewer VerticalScrollBarVisibility="Visible">
+                <TextBlock x:Name="textarea" TextWrapping="Wrap" Text="" Background="#FFFBC6C6" FontSize="18"/>
+            </ScrollViewer>
+        </Border>
     </Grid>
 </Window>
