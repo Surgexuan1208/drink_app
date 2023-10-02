@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -98,21 +99,22 @@ namespace WpfApp1
         {
             PlaceOrder(orders);
             DisplayOrder_textblock_ver();
-            if (takeout == "外帶")
+            WriteOutFile();
+        }
+        private void WriteOutFile()
+        {
+            var result = MessageBox.Show("是否輸出明細表?", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result == MessageBoxResult.Yes)
             {
-                var result = MessageBox.Show("是否輸出明細表?", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (result == MessageBoxResult.Yes)
+                Stream myStream;
+                SaveFileDialog saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "文字檔案|*.txt|All files (*.*)|*.*";
+                if (saveFileDialog.ShowDialog() == true)
                 {
-                    Stream myStream;
-                    SaveFileDialog saveFileDialog = new SaveFileDialog();
-                    saveFileDialog.Filter = "文字檔案|*.txt|All files (*.*)|*.*";
-                    if (saveFileDialog.ShowDialog() == true)
-                    {
-                        FileStream filestream = new FileStream(saveFileDialog.FileName, FileMode.OpenOrCreate, FileAccess.Write);
-                        StreamWriter sw = new StreamWriter(filestream);
-                        sw.Write(textarea.Text);
-                        sw.Close();
-                    }
+                    FileStream filestream = new FileStream(saveFileDialog.FileName, FileMode.OpenOrCreate, FileAccess.Write);
+                    StreamWriter sw = new StreamWriter(filestream);
+                    sw.Write(textarea.Text);
+                    sw.Close();
                 }
             }
         }
@@ -138,43 +140,64 @@ namespace WpfApp1
             double sellPrice = 0.0;
             string message;
             int i = 0;
+            int shower=0;
             foreach (KeyValuePair<string, int> item in orders)
             {
                 i++;
                 string drinkname = item.Key;
                 int amount = orders[drinkname];
                 int price = drinks[drinkname];
+                
                 total += price * amount;
                 textarea.Inlines.Add(new Run { Text = $"飲料品項{i}：{drinkname}*{amount}杯，每杯{price}元，總共{price * amount}元\n", FontSize = 16 });
             }
             if (total >= 500)
             {
                 message = "訂購滿500元以上者8折";
+                shower = 1;
                 sellPrice = total * 0.8;
             }
             else if (total >= 300)
             {
                 message = "訂購滿300元以上者85折";
+                shower = 2;
                 sellPrice = total * 0.85;
             }
             else if (total >= 200)
             {
                 message = "訂購滿200元以上者9折";
+                shower = 3;
                 sellPrice = total * 0.9;
             }
             else
             {
                 message = "訂購未滿200元不打折";
+                shower = 4;
                 sellPrice = total;
             }
-            Italic summary = new Italic(new Run
-            {
-                Text = $"您總共訂購{orders.Count}項飲料，總計{total}元。{message}，總計需付款{(int)sellPrice}元。",
-                FontSize = 16,
-                FontWeight = FontWeights.Bold,
-                Background = Brushes.Azure,
-                Foreground = Brushes.Red,
-            });
+            Run show=new Run();
+            show.Text = $"您總共訂購{orders.Count}項飲料，總計{total}元。{message}，總計需付款{(int)sellPrice}元。";
+            show.FontSize = 16;
+            FontWeight = FontWeights.Bold;
+            switch(shower){
+                case 1:
+                    show.Background = Brushes.Wheat;
+                    show.Foreground = Brushes.Green;
+                    break;
+                case 2:
+                    show.Background = Brushes.Gray;
+                    show.Foreground = Brushes.Gold;
+                    break;
+                case 3:
+                    show.Background = Brushes.White;
+                    show.Foreground = Brushes.Red;
+                    break;
+                case 4:
+                    show.Background = Brushes.Azure;
+                    show.Foreground = Brushes.Gray;
+                    break;
+            }
+            Italic summary = new Italic(show);
             textarea.Inlines.Add(summary);
         }
 
